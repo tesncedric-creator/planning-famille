@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.firebase
+
+# Clé de compte de service Firebase (secrets, ne doit jamais être commitée)
+serviceAccountKey.json
+*firebase-adminsdk*.json
+.env.rappels

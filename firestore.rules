@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Seules les personnes qui ouvrent l'app (connexion anonyme) peuvent lire / écrire les données de
+    // l'app. La collection "rappelsEnvoyes" est volontairement exclue : elle n'est gérée que par le
+    // script d'envoi des rappels (clé de compte de service, qui n'est de toute façon jamais soumise à
+    // ces règles) et ne doit jamais être touchée depuis l'app elle-même.
+    match /{col}/{doc} {
+      allow read, write: if request.auth != null && col != 'rappelsEnvoyes';
+    }
+  }
+}
