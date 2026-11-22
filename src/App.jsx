@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { subscribe, update, useFirebase } from './db'
 import Login from './components/Login'
 import Agenda from './components/Agenda'
@@ -7,8 +7,10 @@ import Voeux from './components/Voeux'
 import Famille from './components/Famille'
 import MonCode from './components/MonCode'
 import Notifications from './components/Notifications'
+import Corvees from './components/Corvees'
 
 const SESSION = 'planning-famille:session'
+const THEME_KEY = 'planning-famille:theme'
 
 export default function App() {
   const [members, setMembers] = useState(null)
@@ -17,7 +19,37 @@ export default function App() {
   const [tab, setTab] = useState('agenda')
   const [showPinForm, setShowPinForm] = useState(false)
   const [showNotifForm, setShowNotifForm] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const menuRef = useRef(null)
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine)
+  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'system')
+
+  useEffect(() => {
+    if (!showMenu) return
+    const onClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [showMenu])
+
+  const effectiveTheme =
+    theme === 'system'
+      ? window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
+      : theme
+
+  useEffect(() => {
+    if (theme === 'system') document.documentElement.removeAttribute('data-theme')
+    else document.documentElement.dataset.theme = theme
+  }, [theme])
+
+  function toggleTheme() {
+    const next = effectiveTheme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem(THEME_KEY, next)
+  }
 
   useEffect(() => {
     const goOnline = () => setOffline(false)
@@ -68,6 +100,7 @@ export default function App() {
     ['agenda', '📅 Agenda'],
     ['courses', '🛒 Courses'],
     ['voeux', '🎁 Vœux'],
+    ['corvees', '🧹 Corvées'],
     ...(isParent ? [['famille', '👨‍👩‍👧 Famille']] : []),
   ]
 
@@ -78,21 +111,46 @@ export default function App() {
         <div className="who">
           <span className="dot" style={{ background: me.color }} />
           {me.name}
-          <button className="link" onClick={() => setShowPinForm(true)}>
-            Mon code
+          <button className="icon-btn" title="Thème clair/sombre" onClick={toggleTheme}>
+            {effectiveTheme === 'dark' ? '☀️' : '🌙'}
           </button>
-          <button className="link" onClick={() => setShowNotifForm(true)}>
-            🔔 Notifications
-          </button>
-          <button
-            className="link"
-            onClick={() => {
-              localStorage.removeItem(SESSION)
-              setMeId(null)
-            }}
-          >
-            Changer
-          </button>
+          <div className="menu-wrap" ref={menuRef}>
+            <button className="icon-btn" title="Menu" onClick={() => setShowMenu((v) => !v)}>
+              ⚙️
+            </button>
+            {showMenu && (
+              <div className="menu-panel">
+                <button
+                  className="menu-item"
+                  onClick={() => {
+                    setShowPinForm(true)
+                    setShowMenu(false)
+                  }}
+                >
+                  Mon code
+                </button>
+                <button
+                  className="menu-item"
+                  onClick={() => {
+                    setShowNotifForm(true)
+                    setShowMenu(false)
+                  }}
+                >
+                  🔔 Notifications
+                </button>
+                <button
+                  className="menu-item"
+                  onClick={() => {
+                    localStorage.removeItem(SESSION)
+                    setMeId(null)
+                    setShowMenu(false)
+                  }}
+                >
+                  Changer de profil
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -111,6 +169,7 @@ export default function App() {
         {tab === 'agenda' && <Agenda me={me} members={members} />}
         {tab === 'courses' && <Courses me={me} members={members} />}
         {tab === 'voeux' && <Voeux me={me} members={members} />}
+        {tab === 'corvees' && <Corvees me={me} members={members} />}
         {tab === 'famille' && isParent && <Famille me={me} members={members} />}
       </main>
 

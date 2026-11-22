@@ -38,6 +38,11 @@ function PinForm({ member, onDone }) {
   )
 }
 
+const MONTHS = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+]
+
 export default function Famille({ me, members }) {
   const [name, setName] = useState('')
   const [role, setRole] = useState('enfant')
@@ -47,6 +52,24 @@ export default function Famille({ me, members }) {
   const [err, setErr] = useState('')
   const [editColorId, setEditColorId] = useState(null)
   const [editPinId, setEditPinId] = useState(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+
+  async function editBirthday(m) {
+    const d = window.prompt(`Jour de naissance de ${m.name} (1 à 31) :`, m.birthDay || '')
+    if (d === null) return
+    const day = parseInt(d, 10)
+    if (!(day >= 1 && day <= 31)) return window.alert('Jour invalide (1 à 31)')
+    const mo = window.prompt(`Mois de naissance de ${m.name} (1 à 12) :`, m.birthMonth || '')
+    if (mo === null) return
+    const month = parseInt(mo, 10)
+    if (!(month >= 1 && month <= 12)) return window.alert('Mois invalide (1 à 12)')
+    const y = window.prompt(`Année de naissance de ${m.name} (facultatif, laisse vide si inconnue) :`, m.birthYear || '')
+    if (y === null) return
+    const year = y.trim() ? parseInt(y, 10) : null
+    if (year !== null && (Number.isNaN(year) || year < 1900 || year > new Date().getFullYear())) return window.alert('Année invalide')
+    await update('members', m.id, { birthDay: day, birthMonth: month, birthYear: year })
+    window.alert('Anniversaire enregistré 🎂')
+  }
 
   // Tant que l'utilisateur n'a pas choisi lui-même une couleur, on garde la première encore libre à jour
   useEffect(() => {
@@ -71,6 +94,7 @@ export default function Famille({ me, members }) {
     setPin('')
     setErr('')
     setColorTouched(false)
+    setShowAddForm(false)
   }
 
   async function renameMember(m) {
@@ -89,39 +113,6 @@ export default function Famille({ me, members }) {
 
   return (
     <div>
-      <form onSubmit={submit} className="card">
-        <h2>Ajouter un membre</h2>
-        <input placeholder="Prénom" value={name} onChange={(e) => setName(e.target.value)} />
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="enfant">Enfant</option>
-          <option value="parent">Parent</option>
-        </select>
-        <input
-          placeholder="Code secret (4 à 6 chiffres)"
-          type="password"
-          inputMode="numeric"
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-        />
-        <div className="swatches">
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={'swatch' + (color === c ? ' sel' : '')}
-              style={{ background: c }}
-              aria-label={'Choisir la couleur ' + c}
-              onClick={() => {
-                setColor(c)
-                setColorTouched(true)
-              }}
-            />
-          ))}
-        </div>
-        {err && <p className="error">{err}</p>}
-        <button className="primary">Ajouter</button>
-      </form>
-
       <section>
         <h3>La famille</h3>
         {members.map((m) => (
@@ -135,6 +126,9 @@ export default function Famille({ me, members }) {
                 <div className="muted">
                   {m.role === 'parent' ? 'Parent' : 'Enfant'}
                   {m.admin ? ' · Admin' : ''}
+                  {m.birthDay && m.birthMonth && (
+                    <> · 🎂 {m.birthDay} {MONTHS[m.birthMonth - 1]}{m.birthYear ? ' ' + m.birthYear : ''}</>
+                  )}
                 </div>
               </div>
               {m.id !== me.id && (
@@ -155,6 +149,11 @@ export default function Famille({ me, members }) {
               <button className="small ghost" onClick={() => renameMember(m)}>
                 Modifier le prénom
               </button>
+              {me.admin && (
+                <button className="small ghost" onClick={() => editBirthday(m)}>
+                  🎂 Anniversaire
+                </button>
+              )}
               {me.admin && (
                 <button className="small ghost" onClick={() => setEditPinId(editPinId === m.id ? null : m.id)}>
                   Changer le code
@@ -184,6 +183,51 @@ export default function Famille({ me, members }) {
           </div>
         ))}
       </section>
+
+      {!showAddForm && (
+        <button className="primary add-btn" onClick={() => setShowAddForm(true)}>
+          + Ajouter un membre
+        </button>
+      )}
+      {showAddForm && (
+        <form onSubmit={submit} className="card">
+          <h2>Ajouter un membre</h2>
+          <input placeholder="Prénom" value={name} onChange={(e) => setName(e.target.value)} />
+          <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="enfant">Enfant</option>
+            <option value="parent">Parent</option>
+          </select>
+          <input
+            placeholder="Code secret (4 à 6 chiffres)"
+            type="password"
+            inputMode="numeric"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+          />
+          <div className="swatches">
+            {COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={'swatch' + (color === c ? ' sel' : '')}
+                style={{ background: c }}
+                aria-label={'Choisir la couleur ' + c}
+                onClick={() => {
+                  setColor(c)
+                  setColorTouched(true)
+                }}
+              />
+            ))}
+          </div>
+          {err && <p className="error">{err}</p>}
+          <div className="two">
+            <button className="primary">Ajouter</button>
+            <button type="button" className="link" onClick={() => setShowAddForm(false)}>
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }

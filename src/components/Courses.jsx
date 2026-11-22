@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { subscribe, add, update, remove } from '../db'
+import Menus from './Menus'
 
 const STATUS = {
   proposed: '⏳ En attente',
@@ -13,6 +14,7 @@ export default function Courses({ me, members }) {
   const [habits, setHabits] = useState([])
   const [name, setName] = useState('')
   const [qty, setQty] = useState('')
+  const [sub, setSub] = useState('liste')
 
   useEffect(() => subscribe('courses', setItems), [])
   useEffect(() => subscribe('habits', setHabits), [])
@@ -76,6 +78,19 @@ export default function Courses({ me, members }) {
 
   return (
     <div>
+      <div className="seg">
+        <button className={sub === 'liste' ? 'active' : ''} onClick={() => setSub('liste')}>
+          Liste
+        </button>
+        <button className={sub === 'menus' ? 'active' : ''} onClick={() => setSub('menus')}>
+          Menus
+        </button>
+      </div>
+
+      {sub === 'menus' ? (
+        <Menus me={me} courseItems={items} />
+      ) : (
+      <>
       <form onSubmit={submit} className="card">
         <h2>{isParent ? 'Ajouter aux courses' : 'Je voudrais aux courses…'}</h2>
         <input
@@ -176,6 +191,8 @@ export default function Courses({ me, members }) {
             </div>
           ))}
         </section>
+      )}
+      </>
       )}
     </div>
   )

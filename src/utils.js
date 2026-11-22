@@ -138,3 +138,89 @@ export function expandEvents(events, rangeStart, rangeEnd) {
   const key = (e) => e.date + ' ' + (e.time || '00:00')
   return out.sort((a, b) => key(a).localeCompare(key(b)))
 }
+
+// ---------- Corvées : périodes et tour de rôle, calculés à la volée (pas de copie stockée par semaine) ----------
+const WEEK0 = new Date(2024, 0, 1) // lundi 1er janvier 2024 : semaine de référence n°0
+
+export function weekIndexOf(date) {
+  const d = new Date(date + 'T00:00')
+  return Math.floor((d - WEEK0) / (7 * 86400000))
+}
+
+// Jour de la semaine en commençant à lundi = 1 … dimanche = 7
+function isoWeekday(date) {
+  return ((new Date(date + 'T00:00').getDay() + 6) % 7) + 1
+}
+
+// Clé de période pour une corvée donnée (jour, semaine, ou "une seule fois")
+export function chorePeriod(chore, date) {
+  if (chore.frequency === 'daily') return date
+  if (chore.frequency === 'weekly') return 'W' + weekIndexOf(date)
+  return 'once'
+}
+
+// Qui est de service pour cette corvée à cette date (tour de rôle = numéro de semaine modulo le nombre de personnes)
+export function choreAssignee(chore, date) {
+  if (chore.assignMode === 'rotation') {
+    const ids = chore.rotationIds || []
+    if (ids.length === 0) return null
+    const i = weekIndexOf(date) % ids.length
+    return ids[i < 0 ? i + ids.length : i]
+  }
+  return chore.assigneeId || null
+}
+
+// Dates du lundi à aujourd'hui (inclus), pour le résumé hebdomadaire
+export function weekDatesSoFar(date) {
+  const n = isoWeekday(date)
+  const d = new Date(date + 'T00:00')
+  const dates = []
+  for (let i = 0; i < n; i++) {
+    const dd = new Date(d)
+    dd.setDate(d.getDate() - (n - 1 - i))
+    dates.push(dateStr(dd))
+  }
+  return dates
+}
+
+export const shortDate = (d) => new Date(d + 'T00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+
+// Les 7 dates (lundi à dimanche) de la semaine contenant cette date — pour les menus de la semaine
+export function weekDates(date) {
+  const n = isoWeekday(date)
+  const d = new Date(date + 'T00:00')
+  const dates = []
+  for (let i = 1; i <= 7; i++) {
+    const dd = new Date(d)
+    dd.setDate(d.getDate() - (n - i))
+    dates.push(dateStr(dd))
+  }
+  return dates
+}
+
+// ---------- Anniversaires : calculés à l'affichage, jamais stockés comme rendez-vous ----------
+export function birthdayDateForYear(member, year) {
+  if (!member.birthDay || !member.birthMonth) return null
+  const d = new Date(year, member.birthMonth - 1, member.birthDay)
+  if (d.getMonth() !== member.birthMonth - 1) {
+    // Date qui déborde (29 février une année non bissextile, etc.) : dernier jour du mois visé
+    return dateStr(new Date(year, member.birthMonth, 0))
+  }
+  return dateStr(d)
+}
+
+export const birthdayAge = (member, year) => (member.birthYear ? year - member.birthYear : null)
+
+// Anniversaires dans une plage de dates (bornes incluses)
+export function birthdaysInRange(members, rangeStart, rangeEnd) {
+  const fromYear = parseInt(rangeStart.slice(0, 4), 10)
+  const toYear = parseInt(rangeEnd.slice(0, 4), 10)
+  const out = []
+  members.forEach((m) => {
+    for (let y = fromYear; y <= toYear; y++) {
+      const d = birthdayDateForYear(m, y)
+      if (d && d >= rangeStart && d <= rangeEnd) out.push({ member: m, date: d, age: birthdayAge(m, y) })
+    }
+  })
+  return out
+}

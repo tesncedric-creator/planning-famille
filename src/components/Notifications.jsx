@@ -61,6 +61,21 @@ export default function Notifications({ me, onDone }) {
         />
         <span>1h avant</span>
       </label>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={!!me.remindMorning}
+          onChange={(e) => update('members', me.id, { remindMorning: e.target.checked })}
+        />
+        <span>Résumé du matin (rendez-vous + corvées du jour)</span>
+      </label>
+      {!!me.remindMorning && (
+        <input
+          type="time"
+          value={me.remindMorningTime || '07:00'}
+          onChange={(e) => update('members', me.id, { remindMorningTime: e.target.value })}
+        />
+      )}
 
       {me.role === 'parent' && (
         <label className="check">

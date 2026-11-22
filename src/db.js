@@ -11,6 +11,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  setDoc,
   doc,
 } from 'firebase/firestore'
 
@@ -110,6 +111,20 @@ export async function update(col, id, data) {
   writeLocal(
     col,
     readLocal(col).map((r) => (r.id === id ? { ...r, ...data } : r))
+  )
+}
+
+// Pour un document à id fixe (un seul par app, ex. menus/<date>) : crée ou met à jour.
+export async function set(col, id, data) {
+  if (useFirebase) {
+    await ready
+    return setDoc(doc(fs, col, id), data, { merge: true })
+  }
+  const rows = readLocal(col)
+  const exists = rows.some((r) => r.id === id)
+  writeLocal(
+    col,
+    exists ? rows.map((r) => (r.id === id ? { ...r, ...data } : r)) : [...rows, { ...data, id }]
   )
 }
 

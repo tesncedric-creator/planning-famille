@@ -10,12 +10,14 @@ export default function Annee({ events, members, selected, onPick }) {
 
   // date -> couleurs des personnes concernées
   const byDay = {}
+  const birthdayDays = new Set()
   events.forEach((ev) => {
     const ids = ev.who && ev.who.length ? ev.who : ['_']
     byDay[ev.date] = byDay[ev.date] || []
     ids.forEach((id) => {
       if (!byDay[ev.date].includes(id)) byDay[ev.date].push(id)
     })
+    if (ev.isBirthday) birthdayDays.add(ev.date)
   })
   const colorOf = (id) => (members.find((m) => m.id === id) || {}).color || GRIS
 
@@ -48,14 +50,16 @@ export default function Annee({ events, members, selected, onPick }) {
             const ds = dateStr(new Date(year, m, d))
             const ids = byDay[ds]
             const colored = ids && ids.length > 0
+            const hasBirthday = birthdayDays.has(ds)
             cells.push(
               <button
                 key={ds}
-                className={'y-day' + (colored ? ' has' : '') + (ds === today ? ' today' : '')}
-                style={colored ? { background: bg(ids.map(colorOf)) } : undefined}
+                className={'y-day' + (colored ? ' has' : '') + (ds === today ? ' today' : '') + (hasBirthday ? ' bday' : '')}
+                style={colored && !hasBirthday ? { background: bg(ids.map(colorOf)) } : undefined}
+                title={hasBirthday ? '🎂 Anniversaire' : undefined}
                 onClick={() => onPick(ds)}
               >
-                {d}
+                {hasBirthday ? '🎂' : d}
               </button>
             )
           }
