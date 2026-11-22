@@ -1,13 +1,23 @@
 import { useEffect, useState } from 'react'
 import { subscribe, add, update, remove } from '../db'
-import { dayLabel, todayStr, dateStr, expandEvents, REPEAT_LABELS, birthdaysInRange } from '../utils'
+import {
+  dayLabel, todayStr, dateStr, expandEvents, REPEAT_LABELS, birthdaysInRange,
+  todayInTz, daysUntil, nextAnnualDate, nextBirthday,
+} from '../utils'
 import Mois from './Mois'
 import Annee from './Annee'
 import Semaine from './Semaine'
 
+function formatCountdown({ emoji, title, days }) {
+  if (days === 0) return title === 'Noël' ? '🎄 C’est Noël !' : `${emoji} ${title} : c’est aujourd’hui !`
+  return `${emoji} ${title} dans ${days} jour${days > 1 ? 's' : ''}`
+}
+
 export default function Agenda({ me, members }) {
   const isParent = me.role === 'parent'
   const [events, setEvents] = useState([])
+  const [countdowns, setCountdowns] = useState([])
+  const [reglages, setReglages] = useState(null)
   const [view, setView] = useState('mois')
   const [selected, setSelected] = useState(todayStr())
   const [showForm, setShowForm] = useState(false)
@@ -25,8 +35,29 @@ export default function Agenda({ me, members }) {
   const [showPast, setShowPast] = useState(false)
 
   useEffect(() => subscribe('events', setEvents), [])
+  useEffect(() => subscribe('comptesARebours', setCountdowns), [])
+  useEffect(() => subscribe('reglages', (rows) => setReglages(rows.find((r) => r.id === 'famille') || null)), [])
 
   const today = todayStr()
+  const todayTz = todayInTz(reglages && reglages.timezone)
+
+  const countdownEntries = (() => {
+    const list = [{ emoji: '🎄', title: 'Noël', date: nextAnnualDate(12, 25, todayTz) }]
+    countdowns
+      .filter((c) => c.date >= todayTz)
+      .forEach((c) => list.push({ emoji: '📅', title: c.title, date: c.date }))
+    const nextBirthdays = members
+      .map((m) => ({ m, date: nextBirthday(m, todayTz) }))
+      .filter((x) => x.date)
+      .sort((a, b) => a.date.localeCompare(b.date))
+    if (nextBirthdays.length > 0) {
+      list.push({ emoji: '🎂', title: `Anniversaire de ${nextBirthdays[0].m.name}`, date: nextBirthdays[0].date })
+    }
+    return list
+      .map((e) => ({ ...e, days: daysUntil(e.date, todayTz) }))
+      .sort((a, b) => a.days - b.days)
+      .slice(0, 3)
+  })()
   const now = new Date()
   // Fenêtre large pour calculer les occurrences (couvre largement la navigation Mois/Année/Liste)
   const rangeStart = dateStr(new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()))
@@ -262,6 +293,16 @@ export default function Agenda({ me, members }) {
 
   return (
     <div>
+      {countdownEntries.length > 0 && (
+        <div className="card countdown-card">
+          {countdownEntries.map((e, i) => (
+            <p key={e.title + e.date} className={i === 0 ? '' : 'muted'}>
+              {formatCountdown(e)}
+            </p>
+          ))}
+        </div>
+      )}
+
       <div className="seg">
         <button className={view === 'mois' ? 'active' : ''} onClick={() => setView('mois')}>
           🗓️ Mois

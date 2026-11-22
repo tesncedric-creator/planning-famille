@@ -62,31 +62,36 @@ export default function Login({ members, onLogin }) {
 
   if (members.length === 0) return <Setup onLogin={onLogin} />
 
+  // `sel` est figé au moment du clic sur le profil : il ne reflète plus les tentatives suivantes
+  // (failedAttempts/lockUntil mis à jour par submit()). On relit toujours la version à jour dans
+  // `members` (tenu à jour en direct par l'abonnement Firestore de App.jsx) pour ces champs-là.
+  const current = sel ? members.find((m) => m.id === sel.id) || sel : null
+
   // Le champ lockUntil sur le membre (Firestore) fait foi, y compris depuis un autre téléphone ;
   // la copie locale (localStorage) ne sert qu'à garder une trace si jamais le membre n'a pas encore
   // reçu la mise à jour (ex. tout juste après une tentative, avant que l'écriture ne revienne).
-  const localLock = sel ? JSON.parse(localStorage.getItem(lockKey(sel.id)) || '{}') : {}
-  const lockUntil = sel ? sel.lockUntil || localLock.lockUntil || 0 : 0
+  const localLock = current ? JSON.parse(localStorage.getItem(lockKey(current.id)) || '{}') : {}
+  const lockUntil = current ? current.lockUntil || localLock.lockUntil || 0 : 0
   const locked = lockUntil > now
 
   async function submit(e) {
     e.preventDefault()
     if (locked) return
-    const h = await hashPinFor(sel, pin)
-    if (h === sel.pinHash) {
-      localStorage.removeItem(lockKey(sel.id))
-      if (sel.failedAttempts || sel.lockUntil) await update('members', sel.id, { failedAttempts: 0, lockUntil: null })
-      onLogin(sel.id)
+    const h = await hashPinFor(current, pin)
+    if (h === current.pinHash) {
+      localStorage.removeItem(lockKey(current.id))
+      if (current.failedAttempts || current.lockUntil) await update('members', current.id, { failedAttempts: 0, lockUntil: null })
+      onLogin(current.id)
       return
     }
-    const attempts = (sel.failedAttempts || 0) + 1
+    const attempts = (current.failedAttempts || 0) + 1
     const patch = { failedAttempts: attempts }
     if (attempts >= MAX_ATTEMPTS) {
       patch.failedAttempts = 0
       patch.lockUntil = Date.now() + LOCK_MINUTES * 60000
     }
-    localStorage.setItem(lockKey(sel.id), JSON.stringify(patch))
-    await update('members', sel.id, patch)
+    localStorage.setItem(lockKey(current.id), JSON.stringify(patch))
+    await update('members', current.id, patch)
     setErr('Code incorrect')
     setPin('')
   }
@@ -111,7 +116,7 @@ export default function Login({ members, onLogin }) {
       ) : (
         <form onSubmit={submit} className="card">
           <p>
-            Salut <b>{sel.name}</b>, tape ton code :
+            Salut <b>{current.name}</b>, tape ton code :
           </p>
           {locked ? (
             <p className="error">Trop d’essais, réessaie dans {Math.max(1, Math.ceil((lockUntil - now) / 60000))} min</p>

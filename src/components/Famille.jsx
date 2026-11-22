@@ -64,10 +64,55 @@ export default function Famille({ me, members }) {
   const [lastBackup, setLastBackup] = useState(() => localStorage.getItem(BACKUP_KEY))
   const [backing, setBacking] = useState(false)
 
+  const [countdowns, setCountdowns] = useState([])
+  const [cdTitle, setCdTitle] = useState('')
+  const [cdDate, setCdDate] = useState('')
+  const [cdEditId, setCdEditId] = useState(null)
+  const [showCdForm, setShowCdForm] = useState(false)
+  const [timezoneInput, setTimezoneInput] = useState('')
+  const [tzSaved, setTzSaved] = useState(false)
+
   useEffect(() => subscribe('reglages', (rows) => setReglages(rows.find((r) => r.id === 'famille') || null)), [])
+  useEffect(() => subscribe('comptesARebours', setCountdowns), [])
   useEffect(() => {
     setPointValueInput(reglages && reglages.pointValue != null ? String(reglages.pointValue) : '')
+    setTimezoneInput((reglages && reglages.timezone) || 'America/Miquelon')
   }, [reglages])
+
+  async function saveTimezone(e) {
+    e.preventDefault()
+    await set('reglages', 'famille', { timezone: timezoneInput.trim() || 'America/Miquelon' })
+    setTzSaved(true)
+    setTimeout(() => setTzSaved(false), 2000)
+  }
+
+  function startEditCountdown(c) {
+    setCdEditId(c.id)
+    setCdTitle(c.title)
+    setCdDate(c.date)
+    setShowCdForm(true)
+  }
+
+  function resetCountdownForm() {
+    setCdEditId(null)
+    setCdTitle('')
+    setCdDate('')
+    setShowCdForm(false)
+  }
+
+  async function submitCountdown(e) {
+    e.preventDefault()
+    if (!cdTitle.trim() || !cdDate) return
+    const data = { title: cdTitle.trim(), date: cdDate }
+    if (cdEditId) await update('comptesARebours', cdEditId, data)
+    else await add('comptesARebours', { ...data, createdBy: me.id })
+    resetCountdownForm()
+  }
+
+  async function removeCountdown(c) {
+    if (!window.confirm(`Supprimer « ${c.title} » ?`)) return
+    await remove('comptesARebours', c.id)
+  }
 
   async function savePointValue(e) {
     e.preventDefault()
@@ -286,6 +331,54 @@ export default function Famille({ me, members }) {
           </div>
         </form>
       )}
+
+      <section>
+        <h3>Comptes à rebours</h3>
+
+        <form onSubmit={saveTimezone} className="two">
+          <input
+            className="grow"
+            placeholder="Fuseau horaire (ex. America/Miquelon)"
+            value={timezoneInput}
+            onChange={(e) => setTimezoneInput(e.target.value)}
+          />
+          <button className="primary">{tzSaved ? '✅' : 'OK'}</button>
+        </form>
+        <p className="muted">Utilisé pour calculer les jours restants (carte « Agenda »).</p>
+
+        {countdowns.map((c) => (
+          <div key={c.id} className="row">
+            <div className="grow">
+              <b>{c.title}</b>
+              <div className="muted">{c.date}</div>
+            </div>
+            <button className="icon" title="Modifier" onClick={() => startEditCountdown(c)}>
+              ✏️
+            </button>
+            <button className="icon" title="Supprimer" onClick={() => removeCountdown(c)}>
+              🗑️
+            </button>
+          </div>
+        ))}
+
+        {!showCdForm ? (
+          <button className="primary add-btn" onClick={() => setShowCdForm(true)}>
+            + Ajouter un compte à rebours
+          </button>
+        ) : (
+          <form onSubmit={submitCountdown} className="card">
+            <h2>{cdEditId ? 'Modifier le compte à rebours' : 'Nouveau compte à rebours'}</h2>
+            <input placeholder="Titre (ex. Vacances d’été)" value={cdTitle} onChange={(e) => setCdTitle(e.target.value)} />
+            <input type="date" value={cdDate} onChange={(e) => setCdDate(e.target.value)} />
+            <div className="two">
+              <button className="primary">{cdEditId ? 'Enregistrer' : 'Ajouter'}</button>
+              <button type="button" className="link" onClick={resetCountdownForm}>
+                Annuler
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
 
       {me.admin && (
         <form onSubmit={savePointValue} className="card">
