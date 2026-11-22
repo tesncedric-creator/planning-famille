@@ -1,5 +1,6 @@
-// Envoie les rappels de rendez-vous à venir par notification push (FCM), sans jamais envoyer deux fois.
-// Lancé toutes les 15 minutes par .github/workflows/rappels.yml (gratuit : pas de Cloud Functions).
+// Envoie les rappels (rendez-vous, résumé du matin, anniversaires) par notification push (FCM),
+// sans jamais envoyer deux fois. Lancé toutes les 15 minutes par .github/workflows/rappels.yml
+// (gratuit : pas de Cloud Functions).
 //
 // Variable d'environnement requise : FIREBASE_SERVICE_ACCOUNT (le JSON complet de la clé de compte
 // de service Firebase, jamais stocké dans le dépôt).
@@ -55,6 +56,29 @@ function occurrenceDates(ev, rangeStart, rangeEnd) {
   return out
 }
 
+// ---------- Même logique de tour de rôle que src/utils.js (corvées) ----------
+const CHORE_WEEK0 = DateTime.fromObject({ year: 2024, month: 1, day: 1 }, { zone: TZ })
+function choreWeekIndex(dateIso) {
+  return Math.floor(DateTime.fromISO(dateIso, { zone: TZ }).diff(CHORE_WEEK0, 'days').days / 7)
+}
+function choreAssignee(chore, dateIso) {
+  if (chore.assignMode === 'rotation') {
+    const ids = chore.rotationIds || []
+    if (ids.length === 0) return null
+    const i = choreWeekIndex(dateIso) % ids.length
+    return ids[i < 0 ? i + ids.length : i]
+  }
+  return chore.assigneeId || null
+}
+
+// ---------- Même logique d'anniversaire que src/utils.js ----------
+function birthdayDateForYear(member, year) {
+  if (!member.birthDay || !member.birthMonth) return null
+  const d = DateTime.fromObject({ year, month: member.birthMonth, day: 1 }, { zone: TZ }).endOf('month')
+  const day = Math.min(member.birthDay, d.day) // 29 février une année non bissextile, etc.
+  return DateTime.fromObject({ year, month: member.birthMonth, day }, { zone: TZ }).toISODate()
+}
+
 async function main() {
   const now = DateTime.now().setZone(TZ)
   const windowEnd = now.plus({ minutes: WINDOW_MINUTES })
@@ -63,10 +87,34 @@ async function main() {
   const rangeStart = now.toISODate()
   const rangeEnd = now.plus({ days: 2 }).toISODate()
 
-  const [eventsSnap, membersSnap] = await Promise.all([db.collection('events').get(), db.collection('members').get()])
+  const [eventsSnap, membersSnap, corveesSnap] = await Promise.all([
+    db.collection('events').get(),
+    db.collection('members').get(),
+    db.collection('corvees').get(),
+  ])
   const events = eventsSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
   const members = membersSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  const corvees = corveesSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]))
+
+  const sentRef = db.collection('rappelsEnvoyes')
+  const invalidTokens = new Set()
+  let sentCount = 0
+
+  async function sendPush(tokens, title, body) {
+    if (tokens.length === 0) return
+    const res = await messaging.sendEachForMulticast({ tokens, notification: { title, body } })
+    res.responses.forEach((r, i) => {
+      if (!r.success) {
+        const code = r.error && r.error.code
+        if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token') {
+          invalidTokens.add(tokens[i])
+        }
+      }
+    })
+    console.log(`Envoyé : ${title} (${tokens.length} appareil(s))`)
+    sentCount++
+  }
 
   // Qui doit recevoir un type de rappel donné pour un rendez-vous donné :
   // - les personnes listées dans "who" qui ont activé ce type de rappel ;
@@ -87,6 +135,7 @@ async function main() {
     return [...recipients]
   }
 
+  // --- 1) Rendez-vous : la veille à 18h, et 1h avant ---
   const dueReminders = []
   for (const ev of events) {
     const who = ev.who || []
@@ -114,15 +163,6 @@ async function main() {
     }
   }
 
-  if (dueReminders.length === 0) {
-    console.log('Aucun rappel à envoyer.')
-    return
-  }
-
-  const sentRef = db.collection('rappelsEnvoyes')
-  const invalidTokens = new Set()
-  let sentCount = 0
-
   for (const reminder of dueReminders) {
     const sentId = `${reminder.occId}__${reminder.kind}`
     const already = await sentRef.doc(sentId).get()
@@ -133,27 +173,11 @@ async function main() {
       for (const t of memberById[id].fcmTokens || []) tokens.push(t)
     }
 
-    if (tokens.length > 0) {
-      const title = reminder.kind === 'eve' ? `Demain : ${reminder.ev.title}` : `Dans 1h : ${reminder.ev.title}`
-      const bodyParts = []
-      if (reminder.ev.time) bodyParts.push(`À ${reminder.ev.time}`)
-      if (reminder.ev.note) bodyParts.push(reminder.ev.note)
-
-      const res = await messaging.sendEachForMulticast({
-        tokens,
-        notification: { title, body: bodyParts.join(' · ') },
-      })
-      res.responses.forEach((r, i) => {
-        if (!r.success) {
-          const code = r.error && r.error.code
-          if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token') {
-            invalidTokens.add(tokens[i])
-          }
-        }
-      })
-      console.log(`Envoyé : ${title} (${tokens.length} appareil(s))`)
-      sentCount++
-    }
+    const title = reminder.kind === 'eve' ? `Demain : ${reminder.ev.title}` : `Dans 1h : ${reminder.ev.title}`
+    const bodyParts = []
+    if (reminder.ev.time) bodyParts.push(`À ${reminder.ev.time}`)
+    if (reminder.ev.note) bodyParts.push(reminder.ev.note)
+    await sendPush(tokens, title, bodyParts.join(' · '))
 
     // Noté comme traité même sans jeton (personne n'a encore activé les notifications) pour ne pas re-calculer sans fin
     await sentRef.doc(sentId).set({
@@ -163,6 +187,72 @@ async function main() {
       date: reminder.occId.split('@')[1],
       tokens: tokens.length,
     })
+  }
+
+  // --- 2) Résumé du matin : rendez-vous du jour (répétitions comprises) + corvées du jour ---
+  const todayIso = now.toISODate()
+  for (const m of members) {
+    if (!m.remindMorning) continue
+    const [hh, mm] = (m.remindMorningTime || '07:00').split(':').map(Number)
+    const triggerAt = now.set({ hour: hh, minute: mm, second: 0, millisecond: 0 })
+    if (triggerAt < catchUpSince || triggerAt >= windowEnd) continue
+
+    const sentId = `morning__${todayIso}__${m.id}`
+    const already = await sentRef.doc(sentId).get()
+    if (already.exists) continue
+
+    const memberIds = [m.id, ...(m.role === 'parent' && m.remindChildren ? members.filter((x) => x.role === 'enfant').map((x) => x.id) : [])]
+    const todaysEvents = events
+      .filter((ev) => occurrenceDates(ev, todayIso, todayIso).length > 0)
+      .filter((ev) => !ev.who || ev.who.length === 0 || ev.who.some((id) => memberIds.includes(id)))
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+    const todaysChores = corvees.filter((c) => choreAssignee(c, todayIso) === m.id)
+
+    if (todaysEvents.length === 0 && todaysChores.length === 0) continue
+
+    const lines = [
+      ...todaysEvents.map((e) => `${e.time ? e.time + ' ' : ''}${e.title}`),
+      ...todaysChores.map((c) => `🧹 ${c.title}`),
+    ]
+    const tokens = m.fcmTokens || []
+    await sendPush(tokens, `Ta journée, ${m.name}`, lines.join(' · '))
+
+    await sentRef.doc(sentId).set({
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      kind: 'morning',
+      date: todayIso,
+      tokens: tokens.length,
+    })
+  }
+
+  // --- 3) Anniversaires : rappel la veille à 18h, pour les parents ---
+  const tomorrowIso = now.plus({ days: 1 }).toISODate()
+  const tomorrowYear = DateTime.fromISO(tomorrowIso, { zone: TZ }).year
+  const birthdayMembers = members.filter((m) => birthdayDateForYear(m, tomorrowYear) === tomorrowIso)
+
+  if (birthdayMembers.length > 0) {
+    const triggerAt = now.set({ hour: 18, minute: 0, second: 0, millisecond: 0 })
+    if (!(triggerAt < catchUpSince || triggerAt >= windowEnd)) {
+      for (const parent of members.filter((m) => m.role === 'parent' && m.remindEve)) {
+        const sentId = `anniv__${tomorrowIso}__${parent.id}`
+        const already = await sentRef.doc(sentId).get()
+        if (already.exists) continue
+
+        const names = birthdayMembers.map((b) => {
+          const age = b.birthYear ? tomorrowYear - b.birthYear : null
+          return `${b.name}${age != null ? ` (${age} ans)` : ''}`
+        })
+        const tokens = parent.fcmTokens || []
+        await sendPush(tokens, '🎂 Anniversaire demain', names.join(', '))
+
+        await sentRef.doc(sentId).set({
+          sentAt: admin.firestore.FieldValue.serverTimestamp(),
+          kind: 'anniv',
+          date: tomorrowIso,
+          tokens: tokens.length,
+        })
+      }
+    }
   }
 
   if (invalidTokens.size > 0) {

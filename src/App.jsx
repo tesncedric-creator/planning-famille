@@ -7,8 +7,10 @@ import Voeux from './components/Voeux'
 import Famille from './components/Famille'
 import MonCode from './components/MonCode'
 import Notifications from './components/Notifications'
+import Corvees from './components/Corvees'
 
 const SESSION = 'planning-famille:session'
+const THEME_KEY = 'planning-famille:theme'
 
 export default function App() {
   const [members, setMembers] = useState(null)
@@ -18,6 +20,25 @@ export default function App() {
   const [showPinForm, setShowPinForm] = useState(false)
   const [showNotifForm, setShowNotifForm] = useState(false)
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine)
+  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'system')
+
+  const effectiveTheme =
+    theme === 'system'
+      ? window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
+      : theme
+
+  useEffect(() => {
+    if (theme === 'system') document.documentElement.removeAttribute('data-theme')
+    else document.documentElement.dataset.theme = theme
+  }, [theme])
+
+  function toggleTheme() {
+    const next = effectiveTheme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem(THEME_KEY, next)
+  }
 
   useEffect(() => {
     const goOnline = () => setOffline(false)
@@ -68,6 +89,7 @@ export default function App() {
     ['agenda', '📅 Agenda'],
     ['courses', '🛒 Courses'],
     ['voeux', '🎁 Vœux'],
+    ['corvees', '🧹 Corvées'],
     ...(isParent ? [['famille', '👨‍👩‍👧 Famille']] : []),
   ]
 
@@ -83,6 +105,9 @@ export default function App() {
           </button>
           <button className="link" onClick={() => setShowNotifForm(true)}>
             🔔 Notifications
+          </button>
+          <button className="icon-btn" title="Thème clair/sombre" onClick={toggleTheme}>
+            {effectiveTheme === 'dark' ? '☀️' : '🌙'}
           </button>
           <button
             className="link"
@@ -111,6 +136,7 @@ export default function App() {
         {tab === 'agenda' && <Agenda me={me} members={members} />}
         {tab === 'courses' && <Courses me={me} members={members} />}
         {tab === 'voeux' && <Voeux me={me} members={members} />}
+        {tab === 'corvees' && <Corvees me={me} members={members} />}
         {tab === 'famille' && isParent && <Famille me={me} members={members} />}
       </main>
 

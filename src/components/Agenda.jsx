@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { subscribe, add, update, remove } from '../db'
-import { dayLabel, todayStr, dateStr, expandEvents, REPEAT_LABELS } from '../utils'
+import { dayLabel, todayStr, dateStr, expandEvents, REPEAT_LABELS, birthdaysInRange } from '../utils'
 import Mois from './Mois'
 import Annee from './Annee'
 import Semaine from './Semaine'
@@ -18,6 +18,8 @@ export default function Agenda({ me, members }) {
   const [time, setTime] = useState('')
   const [who, setWho] = useState([])
   const [note, setNote] = useState('')
+  const [location, setLocation] = useState('')
+  const [driver, setDriver] = useState('')
   const [repeat, setRepeat] = useState('none')
   const [repeatUntil, setRepeatUntil] = useState('')
   const [showPast, setShowPast] = useState(false)
@@ -29,7 +31,25 @@ export default function Agenda({ me, members }) {
   // Fenêtre large pour calculer les occurrences (couvre largement la navigation Mois/Année/Liste)
   const rangeStart = dateStr(new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()))
   const rangeEnd = dateStr(new Date(now.getFullYear() + 3, now.getMonth(), now.getDate()))
-  const occurrences = expandEvents(events, rangeStart, rangeEnd)
+  const nameOf = (id) => (members.find((m) => m.id === id) || {}).name || '?'
+
+  // Anniversaires calculés à l'affichage, jamais stockés comme rendez-vous : on les mélange aux
+  // occurrences réelles pour qu'ils apparaissent automatiquement dans toutes les vues (Mois/Année/Semaine/Liste).
+  const birthdayOccurrences = birthdaysInRange(members, rangeStart, rangeEnd).map(({ member, date, age }) => ({
+    id: 'bday-' + member.id + '@' + date,
+    occId: 'bday-' + member.id + '@' + date,
+    date,
+    time: '',
+    title: `🎂 Anniversaire de ${member.name}${age != null ? ` (${age} ans)` : ''}`,
+    who: [member.id],
+    isBirthday: true,
+    recurring: false,
+  }))
+
+  const key = (e) => e.date + ' ' + (e.time || '00:00')
+  const occurrences = [...expandEvents(events, rangeStart, rangeEnd), ...birthdayOccurrences].sort((a, b) =>
+    key(a).localeCompare(key(b))
+  )
 
   const upcoming = occurrences.filter((e) => e.date >= today)
   const past = occurrences.filter((e) => e.date < today).reverse()
@@ -42,6 +62,8 @@ export default function Agenda({ me, members }) {
     setTime('')
     setWho([])
     setNote('')
+    setLocation('')
+    setDriver('')
     setRepeat('none')
     setRepeatUntil('')
     setShowForm(true)
@@ -59,6 +81,8 @@ export default function Agenda({ me, members }) {
     setTime(ev.time || '')
     setWho(ev.who || [])
     setNote(ev.note || '')
+    setLocation(ev.location || '')
+    setDriver(ev.driver || '')
     setRepeat(scope === 'single' ? 'none' : ev.repeat || 'none')
     setRepeatUntil(scope === 'single' ? '' : ev.repeatUntil || '')
     setScopeFor(null)
@@ -98,6 +122,8 @@ export default function Agenda({ me, members }) {
       time,
       who,
       note: note.trim(),
+      location: location.trim(),
+      driver: driver || null,
       repeat,
       repeatUntil: repeat !== 'none' ? repeatUntil : '',
     }
@@ -133,7 +159,7 @@ export default function Agenda({ me, members }) {
       <section key={g.date}>
         <h3>{dayLabel(g.date)}</h3>
         {g.items.map((ev) => (
-          <div key={ev.occId} className="row event">
+          <div key={ev.occId} className={'row event' + (ev.isBirthday ? ' birthday' : '')}>
             <div className="grow">
               <b>
                 {ev.time && <span className="time">{ev.time}</span>} {ev.title}
@@ -145,6 +171,15 @@ export default function Agenda({ me, members }) {
                 )}
               </b>
               {ev.note && <div className="muted">{ev.note}</div>}
+              {ev.location && (
+                <div className="muted">
+                  📍{' '}
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.location)}`} target="_blank" rel="noreferrer">
+                    {ev.location}
+                  </a>
+                </div>
+              )}
+              {ev.driver && <div className="muted">🚗 Emmené par {nameOf(ev.driver)}</div>}
               <div className="chips">
                 {(ev.who || []).map((id) => {
                   const m = members.find((x) => x.id === id)
@@ -156,7 +191,7 @@ export default function Agenda({ me, members }) {
                 })}
               </div>
             </div>
-            {isParent && (
+            {isParent && !ev.isBirthday && (
               <>
                 <button className="icon" title="Modifier" onClick={() => askEdit(ev)}>
                   ✏️
@@ -193,7 +228,16 @@ export default function Agenda({ me, members }) {
           </button>
         ))}
       </div>
-      <input placeholder="Note (lieu, à apporter…) — facultatif" value={note} onChange={(e) => setNote(e.target.value)} />
+      <input placeholder="Lieu (adresse, nom du lieu…) — facultatif" value={location} onChange={(e) => setLocation(e.target.value)} />
+      <select value={driver} onChange={(e) => setDriver(e.target.value)}>
+        <option value="">Qui emmène ? (facultatif)</option>
+        {members.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.name}
+          </option>
+        ))}
+      </select>
+      <input placeholder="Note (à apporter…) — facultatif" value={note} onChange={(e) => setNote(e.target.value)} />
       <select value={repeat} onChange={(e) => setRepeat(e.target.value)}>
         <option value="none">Jamais</option>
         <option value="weekly">Chaque semaine</option>

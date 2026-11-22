@@ -20,6 +20,7 @@ export default function Mois({ events, members, selected, onSelect }) {
   // date -> liste des couleurs (une par personne, pas de doublon)
   const byDay = {}
   const recurDays = new Set()
+  const birthdayDays = new Set()
   events.forEach((ev) => {
     const ids = ev.who && ev.who.length ? ev.who : ['_']
     byDay[ev.date] = byDay[ev.date] || []
@@ -27,6 +28,7 @@ export default function Mois({ events, members, selected, onSelect }) {
       if (!byDay[ev.date].includes(id)) byDay[ev.date].push(id)
     })
     if (ev.recurring) recurDays.add(ev.date)
+    if (ev.isBirthday) birthdayDays.add(ev.date)
   })
   const colorOf = (id) => (members.find((m) => m.id === id) || {}).color || GRIS
 
@@ -71,6 +73,7 @@ export default function Mois({ events, members, selected, onSelect }) {
               <span className="num">
                 {d.getDate()}
                 {recurDays.has(ds) && <span className="recur">↻</span>}
+                {birthdayDays.has(ds) && <span className="bday">🎂</span>}
               </span>
               <span className="dots">
                 {ids.slice(0, 3).map((id) => (
