@@ -50,6 +50,7 @@ export default function MonCode({ me, onDone }) {
         value={p2}
         onChange={(e) => setP2(e.target.value)}
       />
+      <p className="muted">💡 6 chiffres, c’est plus sûr (4 à 6 acceptés).</p>
       {err && <p className="error">{err}</p>}
       <div className="two">
         <button className="primary" disabled={busy}>
