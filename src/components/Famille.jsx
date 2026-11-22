@@ -52,6 +52,7 @@ export default function Famille({ me, members }) {
   const [err, setErr] = useState('')
   const [editColorId, setEditColorId] = useState(null)
   const [editPinId, setEditPinId] = useState(null)
+  const [showAddForm, setShowAddForm] = useState(false)
 
   async function editBirthday(m) {
     const d = window.prompt(`Jour de naissance de ${m.name} (1 à 31) :`, m.birthDay || '')
@@ -93,6 +94,7 @@ export default function Famille({ me, members }) {
     setPin('')
     setErr('')
     setColorTouched(false)
+    setShowAddForm(false)
   }
 
   async function renameMember(m) {
@@ -111,39 +113,6 @@ export default function Famille({ me, members }) {
 
   return (
     <div>
-      <form onSubmit={submit} className="card">
-        <h2>Ajouter un membre</h2>
-        <input placeholder="Prénom" value={name} onChange={(e) => setName(e.target.value)} />
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="enfant">Enfant</option>
-          <option value="parent">Parent</option>
-        </select>
-        <input
-          placeholder="Code secret (4 à 6 chiffres)"
-          type="password"
-          inputMode="numeric"
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-        />
-        <div className="swatches">
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={'swatch' + (color === c ? ' sel' : '')}
-              style={{ background: c }}
-              aria-label={'Choisir la couleur ' + c}
-              onClick={() => {
-                setColor(c)
-                setColorTouched(true)
-              }}
-            />
-          ))}
-        </div>
-        {err && <p className="error">{err}</p>}
-        <button className="primary">Ajouter</button>
-      </form>
-
       <section>
         <h3>La famille</h3>
         {members.map((m) => (
@@ -214,6 +183,51 @@ export default function Famille({ me, members }) {
           </div>
         ))}
       </section>
+
+      {!showAddForm && (
+        <button className="primary add-btn" onClick={() => setShowAddForm(true)}>
+          + Ajouter un membre
+        </button>
+      )}
+      {showAddForm && (
+        <form onSubmit={submit} className="card">
+          <h2>Ajouter un membre</h2>
+          <input placeholder="Prénom" value={name} onChange={(e) => setName(e.target.value)} />
+          <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="enfant">Enfant</option>
+            <option value="parent">Parent</option>
+          </select>
+          <input
+            placeholder="Code secret (4 à 6 chiffres)"
+            type="password"
+            inputMode="numeric"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+          />
+          <div className="swatches">
+            {COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={'swatch' + (color === c ? ' sel' : '')}
+                style={{ background: c }}
+                aria-label={'Choisir la couleur ' + c}
+                onClick={() => {
+                  setColor(c)
+                  setColorTouched(true)
+                }}
+              />
+            ))}
+          </div>
+          {err && <p className="error">{err}</p>}
+          <div className="two">
+            <button className="primary">Ajouter</button>
+            <button type="button" className="link" onClick={() => setShowAddForm(false)}>
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }

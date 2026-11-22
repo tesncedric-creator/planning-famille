@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { subscribe, update, useFirebase } from './db'
 import Login from './components/Login'
 import Agenda from './components/Agenda'
@@ -19,8 +19,19 @@ export default function App() {
   const [tab, setTab] = useState('agenda')
   const [showPinForm, setShowPinForm] = useState(false)
   const [showNotifForm, setShowNotifForm] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const menuRef = useRef(null)
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine)
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'system')
+
+  useEffect(() => {
+    if (!showMenu) return
+    const onClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [showMenu])
 
   const effectiveTheme =
     theme === 'system'
@@ -100,24 +111,46 @@ export default function App() {
         <div className="who">
           <span className="dot" style={{ background: me.color }} />
           {me.name}
-          <button className="link" onClick={() => setShowPinForm(true)}>
-            Mon code
-          </button>
-          <button className="link" onClick={() => setShowNotifForm(true)}>
-            🔔 Notifications
-          </button>
           <button className="icon-btn" title="Thème clair/sombre" onClick={toggleTheme}>
             {effectiveTheme === 'dark' ? '☀️' : '🌙'}
           </button>
-          <button
-            className="link"
-            onClick={() => {
-              localStorage.removeItem(SESSION)
-              setMeId(null)
-            }}
-          >
-            Changer
-          </button>
+          <div className="menu-wrap" ref={menuRef}>
+            <button className="icon-btn" title="Menu" onClick={() => setShowMenu((v) => !v)}>
+              ⚙️
+            </button>
+            {showMenu && (
+              <div className="menu-panel">
+                <button
+                  className="menu-item"
+                  onClick={() => {
+                    setShowPinForm(true)
+                    setShowMenu(false)
+                  }}
+                >
+                  Mon code
+                </button>
+                <button
+                  className="menu-item"
+                  onClick={() => {
+                    setShowNotifForm(true)
+                    setShowMenu(false)
+                  }}
+                >
+                  🔔 Notifications
+                </button>
+                <button
+                  className="menu-item"
+                  onClick={() => {
+                    localStorage.removeItem(SESSION)
+                    setMeId(null)
+                    setShowMenu(false)
+                  }}
+                >
+                  Changer de profil
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

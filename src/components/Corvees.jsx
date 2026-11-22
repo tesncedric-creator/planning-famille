@@ -122,8 +122,60 @@ export default function Corvees({ me, members }) {
     )
   }
 
+  const familyHasChores = members.some((m) => choresFor(m.id).length > 0)
+
   return (
     <div>
+      <section>
+        <h3>Mes corvées du jour</h3>
+        {myChores.length === 0 ? (
+          <p className="muted">Rien pour toi aujourd’hui 🎉</p>
+        ) : (
+          myChores.map((c) => renderChoreRow(c, me.id))
+        )}
+      </section>
+
+      {isParent && (
+        <section>
+          <h3>Toute la famille</h3>
+          {!familyHasChores ? (
+            <p className="muted">Personne n’a de corvée aujourd’hui</p>
+          ) : (
+            <>
+              <div className="chips">
+                {members
+                  .filter((m) => m.role === 'enfant')
+                  .map((m) => {
+                    const { total, doneCount } = weeklyStats(m.id)
+                    if (total === 0) return null
+                    return (
+                      <span key={m.id} className="chip" style={{ background: m.color }}>
+                        {m.name} : {doneCount} faite{doneCount > 1 ? 's' : ''} sur {total}
+                      </span>
+                    )
+                  })}
+              </div>
+
+              {members.map((m) => {
+                const list = choresFor(m.id)
+                if (list.length === 0) return null
+                return (
+                  <div key={m.id} className="chore-member">
+                    <div className="chore-member-head">
+                      <span className="avatar" style={{ background: m.color }}>
+                        {m.name.charAt(0).toUpperCase()}
+                      </span>
+                      <b>{m.name}</b>
+                    </div>
+                    {list.map((c) => renderChoreRow(c, m.id))}
+                  </div>
+                )
+              })}
+            </>
+          )}
+        </section>
+      )}
+
       {isParent && (
         <>
           {!showForm && (
@@ -208,47 +260,6 @@ export default function Corvees({ me, members }) {
             ))}
           </section>
         </>
-      )}
-
-      <section>
-        <h3>Mes corvées du jour</h3>
-        {myChores.length === 0 && <p className="muted">Rien pour toi aujourd’hui 🎉</p>}
-        {myChores.map((c) => renderChoreRow(c, me.id))}
-      </section>
-
-      {isParent && (
-        <section>
-          <h3>Toute la famille</h3>
-          <div className="chips">
-            {members
-              .filter((m) => m.role === 'enfant')
-              .map((m) => {
-                const { total, doneCount } = weeklyStats(m.id)
-                if (total === 0) return null
-                return (
-                  <span key={m.id} className="chip" style={{ background: m.color }}>
-                    {m.name} : {doneCount} faite{doneCount > 1 ? 's' : ''} sur {total}
-                  </span>
-                )
-              })}
-          </div>
-
-          {members.map((m) => {
-            const list = choresFor(m.id)
-            if (list.length === 0) return null
-            return (
-              <div key={m.id} className="chore-member">
-                <div className="chore-member-head">
-                  <span className="avatar" style={{ background: m.color }}>
-                    {m.name.charAt(0).toUpperCase()}
-                  </span>
-                  <b>{m.name}</b>
-                </div>
-                {list.map((c) => renderChoreRow(c, m.id))}
-              </div>
-            )
-          })}
-        </section>
       )}
     </div>
   )
