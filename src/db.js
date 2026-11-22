@@ -7,6 +7,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
   collection,
+  getDocs,
   onSnapshot,
   addDoc,
   updateDoc,
@@ -126,6 +127,16 @@ export async function set(col, id, data) {
     col,
     exists ? rows.map((r) => (r.id === id ? { ...r, ...data } : r)) : [...rows, { ...data, id }]
   )
+}
+
+// Lecture ponctuelle (pas d'abonnement temps réel) — pour la sauvegarde JSON.
+export async function getAll(col) {
+  if (useFirebase) {
+    await ready
+    const snap = await getDocs(collection(fs, col))
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  }
+  return readLocal(col)
 }
 
 export async function remove(col, id) {

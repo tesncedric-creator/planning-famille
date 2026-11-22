@@ -107,6 +107,9 @@ a { color: var(--main); font-size: .9rem; }
 
 .row.birthday { background: var(--main-soft); }
 .row.birthday b { color: var(--main); }
+.countdown-card p { margin: 0 0 4px; }
+.countdown-card p:first-child { font-weight: 700; }
+.countdown-card p:last-child { margin-bottom: 0; }
 .chore-member { margin-top: 10px; }
 .chore-member-head { display: flex; align-items: center; gap: 8px; padding: 4px 0 2px; }
 .menu-actions { margin-bottom: 14px; }

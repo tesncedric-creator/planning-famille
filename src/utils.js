@@ -211,6 +211,48 @@ export function birthdayDateForYear(member, year) {
 
 export const birthdayAge = (member, year) => (member.birthYear ? year - member.birthYear : null)
 
+// Prochaine occurrence (aujourd'hui compris) de l'anniversaire d'un membre
+export function nextBirthday(member, today) {
+  if (!member.birthDay || !member.birthMonth) return null
+  const year = parseInt(today.slice(0, 4), 10)
+  let d = birthdayDateForYear(member, year)
+  if (d < today) d = birthdayDateForYear(member, year + 1)
+  return d
+}
+
+export const pad2 = (n) => String(n).padStart(2, '0')
+
+// "Aujourd'hui" dans un fuseau horaire donné (ex. celui réglé dans Famille) ; repli sur l'horloge
+// locale de l'appareil si le fuseau est invalide ou vide.
+export function todayInTz(timezone) {
+  if (!timezone) return todayStr()
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date())
+    const get = (t) => parts.find((p) => p.type === t).value
+    return `${get('year')}-${get('month')}-${get('day')}`
+  } catch {
+    return todayStr()
+  }
+}
+
+// Nombre de jours (entier) entre deux dates "AAAA-MM-JJ"
+export function daysUntil(date, today) {
+  const [y1, m1, d1] = today.split('-').map(Number)
+  const [y2, m2, d2] = date.split('-').map(Number)
+  return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000)
+}
+
+// Prochaine occurrence (aujourd'hui compris) d'une date annuelle fixe (ex. Noël, 25/12)
+export function nextAnnualDate(month, day, today) {
+  const year = parseInt(today.slice(0, 4), 10)
+  let d = `${year}-${pad2(month)}-${pad2(day)}`
+  if (d < today) d = `${year + 1}-${pad2(month)}-${pad2(day)}`
+  return d
+}
+
 // Anniversaires dans une plage de dates (bornes incluses)
 export function birthdaysInRange(members, rangeStart, rangeEnd) {
   const fromYear = parseInt(rangeStart.slice(0, 4), 10)
