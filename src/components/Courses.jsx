@@ -21,12 +21,13 @@ export default function Courses({ me, members }) {
 
   const nameOf = (id) => (members.find((m) => m.id === id) || {}).name || '?'
   const byDate = (a, b) => (a.createdAt || 0) - (b.createdAt || 0)
+  const byName = (a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })
 
-  const proposed = items.filter((i) => i.status === 'proposed').sort(byDate)
-  // Les articles cochés (achetés) descendent en bas de la liste
+  const proposed = items.filter((i) => i.status === 'proposed').sort(byName)
+  // Les articles cochés (achetés) descendent en bas de la liste, triés alphabétiquement entre eux
   const approved = items
     .filter((i) => i.status === 'approved')
-    .sort((a, b) => (!!a.bought === !!b.bought ? byDate(a, b) : a.bought ? 1 : -1))
+    .sort((a, b) => (!!a.bought === !!b.bought ? byName(a, b) : a.bought ? 1 : -1))
   const rejected = items.filter((i) => i.status === 'rejected').sort(byDate)
   const mine = items.filter((i) => i.addedBy === me.id && i.status !== 'approved').sort(byDate)
   const topHabits = [...habits].sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 8)
