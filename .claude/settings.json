@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(cat | jq -r '.tool_input.file_path // empty'); base=$(printf '%s' \"$f\" | tr '\\\\' '/' | sed 's#.*/##'); if [ \"$base\" = \".env\" ]; then echo 'Bloqué : .env contient des clés Firebase en clair (API key, VAPID). Modifie-le à la main si besoin.' >&2; exit 2; fi"
+          },
+          {
+            "type": "command",
+            "command": "f=$(cat | jq -r '.tool_input.file_path // empty'); base=$(printf '%s' \"$f\" | tr '\\\\' '/' | sed 's#.*/##'); if [ \"$base\" = \"firestore.rules\" ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"firestore.rules contrôle les accès de la famille (codes secrets, réservation cadeaux) - confirme avant de modifier.\"}}'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

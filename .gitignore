@@ -2,6 +2,7 @@ node_modules
 dist
 .env
 .firebase
+.claude/settings.local.json
 
 # Clé de compte de service Firebase (secrets, ne doit jamais être commitée)
 serviceAccountKey.json
