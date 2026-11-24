@@ -29,6 +29,8 @@ There's no password-based auth — Firebase Auth is only used anonymously to sat
 
 Member codes are hashed (`src/utils.js: hashPin`/`hashPinFor`) using `sha256(pf:<salt>:<pin>)` with a per-member `pinSalt`. A legacy path (`hashPinLegacy`) still supports accounts created before `pinSalt` existed, keyed by name instead of a stable id — keep this fallback when touching PIN logic, don't remove it.
 
+`Login.jsx` enforces an anti-brute-force lockout (`MAX_ATTEMPTS = 5`, `LOCK_MINUTES = 5`): `failedAttempts`/`lockUntil` live on the member's Firestore document (not just `localStorage`), so the lock survives a cleared browser or a login attempt from another device. A parent can manually reset it from `Famille.jsx`.
+
 ### Date/recurrence logic duplicated in two runtimes
 `src/utils.js` has the canonical recurrence engine (`expandEvents`/`occurrenceDates`) and chore rotation logic (`chorePeriod`/`choreAssignee`, week-indexed from `WEEK0 = 2024-01-01`), used by the browser app. `scripts/envoyer-rappels.js` reimplements the *same* logic with Luxon (`DateTime`) instead of native `Date`, because it's a plain Node script run by GitHub Actions and can't import Vite/browser code. **If you change recurrence or chore-rotation rules in `src/utils.js`, mirror the change in `scripts/envoyer-rappels.js`** or reminders will drift out of sync with what the app displays.
 
