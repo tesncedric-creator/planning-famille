@@ -10,6 +10,10 @@
           },
           {
             "type": "command",
+            "command": "f=$(cat | jq -r '.tool_input.file_path // empty'); base=$(printf '%s' \"$f\" | tr '\\\\' '/' | sed 's#.*/##'); if [ \"$base\" = \"serviceAccountKey.json\" ]; then echo 'Bloqué : serviceAccountKey.json contient la clé de compte de service Firebase (secret admin complet). Modifie-le à la main si besoin.' >&2; exit 2; fi"
+          },
+          {
+            "type": "command",
             "command": "f=$(cat | jq -r '.tool_input.file_path // empty'); base=$(printf '%s' \"$f\" | tr '\\\\' '/' | sed 's#.*/##'); if [ \"$base\" = \"firestore.rules\" ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"firestore.rules contrôle les accès de la famille (codes secrets, réservation cadeaux) - confirme avant de modifier.\"}}'; fi"
           }
         ]
