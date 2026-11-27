@@ -8,7 +8,7 @@ export default function Semaine({ events, members }) {
   })
 
   return (
-    <div>
+    <div className="semaine-grid">
       {days.map((ds) => {
         const dayEvents = events
           .filter((e) => e.date === ds)

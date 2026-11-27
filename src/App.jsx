@@ -154,6 +154,14 @@ export default function App() {
         </div>
       </header>
 
+      <nav>
+        {tabs.map(([key, label]) => (
+          <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
+            {label}
+          </button>
+        ))}
+      </nav>
+
       {!useFirebase && (
         <p className="banner">Mode test : les données restent sur cet appareil (Firebase pas encore branché).</p>
       )}
@@ -163,7 +171,7 @@ export default function App() {
         </p>
       )}
 
-      <main>
+      <main className={tab === 'agenda' ? 'main-wide' : ''}>
         {showPinForm && <MonCode me={me} onDone={() => setShowPinForm(false)} />}
         {showNotifForm && <Notifications me={me} onDone={() => setShowNotifForm(false)} />}
         {tab === 'agenda' && <Agenda me={me} members={members} />}
@@ -172,14 +180,6 @@ export default function App() {
         {tab === 'corvees' && <Corvees me={me} members={members} />}
         {tab === 'famille' && isParent && <Famille me={me} members={members} />}
       </main>
-
-      <nav>
-        {tabs.map(([key, label]) => (
-          <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
-            {label}
-          </button>
-        ))}
-      </nav>
     </div>
   )
 }

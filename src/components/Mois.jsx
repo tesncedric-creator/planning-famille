@@ -21,6 +21,8 @@ export default function Mois({ events, members, selected, onSelect }) {
   const byDay = {}
   const recurDays = new Set()
   const birthdayDays = new Set()
+  // date -> rendez-vous du jour (hors anniversaires), pour l'aperçu affiché sur grand écran
+  const itemsByDay = {}
   events.forEach((ev) => {
     const ids = ev.who && ev.who.length ? ev.who : ['_']
     byDay[ev.date] = byDay[ev.date] || []
@@ -29,6 +31,7 @@ export default function Mois({ events, members, selected, onSelect }) {
     })
     if (ev.recurring) recurDays.add(ev.date)
     if (ev.isBirthday) birthdayDays.add(ev.date)
+    else (itemsByDay[ev.date] = itemsByDay[ev.date] || []).push(ev)
   })
   const colorOf = (id) => (members.find((m) => m.id === id) || {}).color || GRIS
 
@@ -62,6 +65,7 @@ export default function Mois({ events, members, selected, onSelect }) {
           const ds = dateStr(d)
           const inMonth = d.getMonth() === month
           const ids = byDay[ds] || []
+          const dayItems = itemsByDay[ds] || []
           return (
             <button
               key={ds}
@@ -81,6 +85,16 @@ export default function Mois({ events, members, selected, onSelect }) {
                 ))}
                 {ids.length > 3 && <span className="more">+</span>}
               </span>
+              {dayItems.length > 0 && (
+                <span className="day-events">
+                  {dayItems.slice(0, 3).map((ev) => (
+                    <span key={ev.occId} className="day-event" style={{ background: colorOf((ev.who && ev.who[0]) || '_') }}>
+                      {ev.time && <b>{ev.time}</b>} {ev.title}
+                    </span>
+                  ))}
+                  {dayItems.length > 3 && <span className="day-event-more">+{dayItems.length - 3} autres</span>}
+                </span>
+              )}
             </button>
           )
         })}

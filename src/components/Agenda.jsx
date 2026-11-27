@@ -292,9 +292,9 @@ export default function Agenda({ me, members }) {
   )
 
   return (
-    <div>
+    <div className={'agenda' + (view === 'mois' ? ' agenda-mois' : '')}>
       {countdownEntries.length > 0 && (
-        <div className="card countdown-card">
+        <div className="card countdown-card agenda-side-top">
           {countdownEntries.map((e, i) => (
             <p key={e.title + e.date} className={i === 0 ? '' : 'muted'}>
               {formatCountdown(e)}
@@ -303,7 +303,7 @@ export default function Agenda({ me, members }) {
         </div>
       )}
 
-      <div className="seg">
+      <div className="seg agenda-seg">
         <button className={view === 'mois' ? 'active' : ''} onClick={() => setView('mois')}>
           🗓️ Mois
         </button>
@@ -319,7 +319,7 @@ export default function Agenda({ me, members }) {
       </div>
 
       {isParent && (
-        <>
+        <div className={'agenda-side-mid' + (showForm || scopeFor ? ' agenda-form-open' : '')}>
           {scopeFor ? (
             <div className="card">
               <h2>
@@ -347,7 +347,7 @@ export default function Agenda({ me, members }) {
               + Nouveau rendez-vous
             </button>
           )}
-        </>
+        </div>
       )}
 
       {view === 'annee' ? (
@@ -364,18 +364,22 @@ export default function Agenda({ me, members }) {
         <Semaine events={occurrences} members={members} />
       ) : view === 'mois' ? (
         <>
-          <Mois events={occurrences} members={members} selected={selected} onSelect={pickDay} />
-          {dayEvents.length === 0 ? (
-            <>
-              <h3>{dayLabel(selected)}</h3>
-              <p className="muted">Rien de prévu ce jour-là.</p>
-            </>
-          ) : (
-            renderList(dayEvents)
-          )}
+          <div className="agenda-cal">
+            <Mois events={occurrences} members={members} selected={selected} onSelect={pickDay} />
+          </div>
+          <div className="agenda-side-bottom">
+            {dayEvents.length === 0 ? (
+              <>
+                <h3>{dayLabel(selected)}</h3>
+                <p className="muted">Rien de prévu ce jour-là.</p>
+              </>
+            ) : (
+              renderList(dayEvents)
+            )}
+          </div>
         </>
       ) : (
-        <>
+        <div className="agenda-liste">
           {upcoming.length === 0 ? <p className="muted center">Aucun rendez-vous à venir 🎉</p> : renderList(upcoming)}
 
           {past.length > 0 && (
@@ -386,7 +390,7 @@ export default function Agenda({ me, members }) {
               {showPast && <div className="past">{renderList(past)}</div>}
             </>
           )}
-        </>
+        </div>
       )}
     </div>
   )
