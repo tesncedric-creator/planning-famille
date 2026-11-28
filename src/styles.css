@@ -193,11 +193,27 @@ button.small.ghost { background: var(--main-soft); color: var(--main); }
 .member-head { display: flex; align-items: center; gap: 8px; }
 .member-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
-/* ---- Grand écran (≥ 900px) : l'agenda prend toute la page, la nav passe en haut ---- */
+/* ---- Grand écran (≥ 900px) : les pages prennent toute la largeur, la nav passe en haut ---- */
 @media (min-width: 900px) {
   .app { max-width: none; padding-bottom: 0; }
   main { padding: 20px 24px; }
-  main:not(.main-wide) { max-width: 800px; margin: 0 auto; }
+
+  /* Pages en colonnes : .cols = deux colonnes égales, .cols-side = formulaire à gauche + liste */
+  .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
+  .cols.cols-side { grid-template-columns: 360px minmax(0, 1fr); }
+  .cols > * > :first-child, .cols > section > h3:first-child, .cols > * > section:first-child > h3:first-child { margin-top: 0; }
+
+  /* Grille de cartes (membres de la famille, menus de la semaine) */
+  .grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; align-items: start; margin-bottom: 14px; }
+  .grille > .card { margin-bottom: 0; }
+
+  /* Contenus à une seule colonne : centrés, largeur confortable */
+  .page-etroite, main > .card { max-width: 800px; margin-left: auto; margin-right: auto; }
+
+  /* Boutons, sélecteurs et formulaires isolés : pas étirés sur tout l'écran */
+  main .seg { max-width: 480px; margin-left: auto; margin-right: auto; }
+  .cols form .seg { max-width: none; }
+  .menu-actions, main > div > .add-btn, main > div > form.card { max-width: 480px; }
 
   nav {
     position: static; max-width: none; margin: 0;

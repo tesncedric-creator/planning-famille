@@ -91,7 +91,8 @@ export default function Courses({ me, members }) {
       {sub === 'menus' ? (
         <Menus me={me} courseItems={items} />
       ) : (
-      <>
+      <div className="cols cols-side">
+      <div>
       <form onSubmit={submit} className="card">
         <h2>{isParent ? 'Ajouter aux courses' : 'Je voudrais aux courses…'}</h2>
         <input
@@ -118,7 +119,9 @@ export default function Courses({ me, members }) {
           </div>
         </div>
       )}
+      </div>
 
+      <div>
       {isParent && proposed.length > 0 && (
         <section>
           <h3>À valider ({proposed.length})</h3>
@@ -193,7 +196,8 @@ export default function Courses({ me, members }) {
           ))}
         </section>
       )}
-      </>
+      </div>
+      </div>
       )}
     </div>
   )

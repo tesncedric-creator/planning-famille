@@ -84,6 +84,7 @@ export default function Menus({ me, courseItems }) {
         </button>
       </div>
 
+      <div className="grille">
       {dates.map((d) => (
         <div key={d} className="card">
           <h3 className="no-top">{dayLabel(d)}</h3>
@@ -122,6 +123,7 @@ export default function Menus({ me, courseItems }) {
           })}
         </div>
       ))}
+      </div>
     </div>
   )
 }
