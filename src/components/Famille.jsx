@@ -209,6 +209,7 @@ export default function Famille({ me, members }) {
     <div>
       <section>
         <h3>La famille</h3>
+        <div className="grille">
         {members.map((m) => (
           <div key={m.id} className="card">
             <div className="member-head">
@@ -284,6 +285,7 @@ export default function Famille({ me, members }) {
             {editPinId === m.id && <PinForm member={m} onDone={() => setEditPinId(null)} />}
           </div>
         ))}
+        </div>
       </section>
 
       {!showAddForm && (
@@ -332,6 +334,7 @@ export default function Famille({ me, members }) {
         </form>
       )}
 
+      <div className="cols">
       <section>
         <h3>Comptes à rebours</h3>
 
@@ -380,6 +383,7 @@ export default function Famille({ me, members }) {
         )}
       </section>
 
+      <div>
       {me.admin && (
         <form onSubmit={savePointValue} className="card">
           <h2>Points de corvées</h2>
@@ -410,6 +414,8 @@ export default function Famille({ me, members }) {
           <p className="muted">💡 Pense à sauvegarder de temps en temps.</p>
         </section>
       )}
+      </div>
+      </div>
     </div>
   )
 }

@@ -152,7 +152,8 @@ export default function Corvees({ me, members }) {
   const familyHasChores = members.some((m) => choresFor(m.id).length > 0)
 
   return (
-    <div>
+    <div className={isParent ? 'cols' : 'page-etroite'}>
+      <div>
       <section>
         <h3>Mes corvées du jour</h3>
         <p className="muted">
@@ -237,8 +238,10 @@ export default function Corvees({ me, members }) {
         </section>
       )}
 
+      </div>
+
       {isParent && (
-        <>
+        <div>
           {!showForm && (
             <button className="primary add-btn" onClick={() => setShowForm(true)}>
               + Nouvelle corvée
@@ -327,7 +330,7 @@ export default function Corvees({ me, members }) {
               </div>
             ))}
           </section>
-        </>
+        </div>
       )}
     </div>
   )

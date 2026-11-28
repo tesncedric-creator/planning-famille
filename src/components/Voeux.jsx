@@ -68,6 +68,7 @@ export default function Voeux({ me, members }) {
         </p>
       )}
 
+      <div className={canEdit ? 'cols cols-side' : 'page-etroite'}>
       {canEdit && (
         <form onSubmit={submit} className="card">
           <input placeholder="Une idée de cadeau…" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -76,6 +77,7 @@ export default function Voeux({ me, members }) {
         </form>
       )}
 
+      <div>
       {list.length === 0 && <p className="muted center">Rien dans cette liste pour l’instant.</p>}
 
       {list.map((w) => (
@@ -109,6 +111,8 @@ export default function Voeux({ me, members }) {
           )}
         </div>
       ))}
+      </div>
+      </div>
     </div>
   )
 }

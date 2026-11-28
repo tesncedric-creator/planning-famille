@@ -171,7 +171,7 @@ export default function App() {
         </p>
       )}
 
-      <main className={tab === 'agenda' ? 'main-wide' : ''}>
+      <main>
         {showPinForm && <MonCode me={me} onDone={() => setShowPinForm(false)} />}
         {showNotifForm && <Notifications me={me} onDone={() => setShowNotifForm(false)} />}
         {tab === 'agenda' && <Agenda me={me} members={members} />}
